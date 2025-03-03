@@ -45,6 +45,8 @@ type Configuration struct {
 	CircularDepth   *int
 	DefaultResponse *bool
 	OutputMode      *string
+	Validate        *bool
+	BuildTag        *string // Kolla
 }
 
 const (
@@ -292,7 +294,6 @@ func (g *OpenAPIv3Generator) _buildQueryParamsV3(field *protogen.Field, depths m
 	parameters := []*v3.ParameterOrReference{}
 
 	queryFieldName := g.reflect.formatFieldName(field.Desc)
-	fieldDescription := g.filterCommentString(field.Comments.Leading)
 
 	if field.Desc.IsMap() {
 		// Map types are not allowed in query parameteres
@@ -304,6 +305,7 @@ func (g *OpenAPIv3Generator) _buildQueryParamsV3(field *protogen.Field, depths m
 		switch typeName {
 		case ".google.protobuf.Value":
 			fieldSchema := g.reflect.schemaOrReferenceForField(field.Desc)
+			fieldDescription := g.filterCommentString(field.Comments.Leading)
 			parameters = append(parameters,
 				&v3.ParameterOrReference{
 					Oneof: &v3.ParameterOrReference_Parameter{
@@ -323,6 +325,7 @@ func (g *OpenAPIv3Generator) _buildQueryParamsV3(field *protogen.Field, depths m
 			".google.protobuf.DoubleValue":
 			valueField := getValueField(field.Message.Desc)
 			fieldSchema := g.reflect.schemaOrReferenceForField(valueField)
+			fieldDescription := g.filterCommentString(field.Comments.Leading)
 			parameters = append(parameters,
 				&v3.ParameterOrReference{
 					Oneof: &v3.ParameterOrReference_Parameter{
@@ -339,6 +342,7 @@ func (g *OpenAPIv3Generator) _buildQueryParamsV3(field *protogen.Field, depths m
 
 		case ".google.protobuf.Timestamp":
 			fieldSchema := g.reflect.schemaOrReferenceForMessage(field.Message.Desc)
+			fieldDescription := g.filterCommentString(field.Comments.Leading)
 			parameters = append(parameters,
 				&v3.ParameterOrReference{
 					Oneof: &v3.ParameterOrReference_Parameter{
@@ -354,6 +358,7 @@ func (g *OpenAPIv3Generator) _buildQueryParamsV3(field *protogen.Field, depths m
 			return parameters
 		case ".google.protobuf.Duration":
 			fieldSchema := g.reflect.schemaOrReferenceForMessage(field.Message.Desc)
+			fieldDescription := g.filterCommentString(field.Comments.Leading)
 			parameters = append(parameters,
 				&v3.ParameterOrReference{
 					Oneof: &v3.ParameterOrReference_Parameter{
@@ -377,6 +382,7 @@ func (g *OpenAPIv3Generator) _buildQueryParamsV3(field *protogen.Field, depths m
 		// Represent field masks directly as strings (don't expand them).
 		if typeName == ".google.protobuf.FieldMask" {
 			fieldSchema := g.reflect.schemaOrReferenceForField(field.Desc)
+			fieldDescription := g.filterCommentString(field.Comments.Leading)
 			parameters = append(parameters,
 				&v3.ParameterOrReference{
 					Oneof: &v3.ParameterOrReference_Parameter{
@@ -416,6 +422,12 @@ func (g *OpenAPIv3Generator) _buildQueryParamsV3(field *protogen.Field, depths m
 	} else if field.Desc.Kind() != protoreflect.GroupKind {
 		// schemaOrReferenceForField also handles array types
 		fieldSchema := g.reflect.schemaOrReferenceForField(field.Desc)
+		fieldDescription := g.filterCommentString(field.Comments.Leading)
+
+		if *g.conf.Validate {
+			g.addValidationRules(fieldSchema, field.Desc)
+		}
+		wk.AddEnumComments(fieldSchema, field.Desc)
 
 		parameters = append(parameters,
 			&v3.ParameterOrReference{
@@ -822,8 +834,6 @@ func (g *OpenAPIv3Generator) addSchemasForMessagesToDocumentV3(d *v3.Document, m
 
 		var required []string
 		for _, field := range message.Fields {
-			// Get the field description from the comments.
-			description := g.filterCommentString(field.Comments.Leading)
 			// Check the field annotations to see if this is a readonly or writeonly field.
 			inputOnly := false
 			outputOnly := false
@@ -848,6 +858,8 @@ func (g *OpenAPIv3Generator) addSchemasForMessagesToDocumentV3(d *v3.Document, m
 
 			// The field is either described by a reference or a schema.
 			fieldSchema := g.reflect.schemaOrReferenceForField(field.Desc)
+			// Get the field description from the comments.
+			description := g.filterCommentString(field.Comments.Leading)
 			if fieldSchema == nil {
 				continue
 			}
@@ -873,6 +885,11 @@ func (g *OpenAPIv3Generator) addSchemasForMessagesToDocumentV3(d *v3.Document, m
 					proto.Merge(schema.Schema, extProperty.(*v3.Schema))
 				}
 			}
+
+			if *g.conf.Validate {
+				g.addValidationRules(fieldSchema, field.Desc)
+			}
+			wk.AddEnumComments(fieldSchema, field.Desc)
 
 			definitionProperties.AdditionalProperties = append(
 				definitionProperties.AdditionalProperties,

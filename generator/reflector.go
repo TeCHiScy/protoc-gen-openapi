@@ -22,8 +22,8 @@ import (
 
 	"google.golang.org/protobuf/reflect/protoreflect"
 
-	wk "github.com/google/gnostic/cmd/protoc-gen-openapi/generator/wellknown"
-	v3 "github.com/google/gnostic/openapiv3"
+	wk "github.com/TeCHiScy/protoc-gen-openapi/generator/wellknown"
+	v3 "github.com/TeCHiScy/protoc-gen-openapi/openapiv3"
 )
 
 const (
@@ -47,6 +47,10 @@ func NewOpenAPIv3Reflector(conf Configuration) *OpenAPIv3Reflector {
 }
 
 func (r *OpenAPIv3Reflector) getMessageName(message protoreflect.MessageDescriptor) string {
+	return getMessageName(message)
+}
+
+func getMessageName(message protoreflect.MessageDescriptor) string {
 	prefix := ""
 	parent := message.Parent()
 
@@ -97,7 +101,11 @@ func (r *OpenAPIv3Reflector) formatFieldName(field protoreflect.FieldDescriptor)
 
 // fullMessageTypeName builds the full type name of a message.
 func (r *OpenAPIv3Reflector) fullMessageTypeName(message protoreflect.MessageDescriptor) string {
-	name := r.getMessageName(message)
+	return fullMessageTypeName(message)
+}
+
+func fullMessageTypeName(message protoreflect.MessageDescriptor) string {
+	name := getMessageName(message)
 	return "." + string(message.ParentFile().Package()) + "." + name
 }
 
@@ -127,7 +135,6 @@ func (r *OpenAPIv3Reflector) schemaReferenceForMessage(message protoreflect.Mess
 // the definition in `#/components/schemas/`
 func (r *OpenAPIv3Reflector) schemaOrReferenceForMessage(message protoreflect.MessageDescriptor) *v3.SchemaOrReference {
 	typeName := r.fullMessageTypeName(message)
-
 	switch typeName {
 
 	case ".google.api.HttpBody":
@@ -217,7 +224,7 @@ func (r *OpenAPIv3Reflector) schemaOrReferenceForField(field protoreflect.FieldD
 		kindSchema = wk.NewStringSchema()
 
 	case protoreflect.EnumKind:
-		kindSchema = wk.NewEnumSchema(*&r.conf.EnumType, field)
+		kindSchema = wk.NewEnumSchema(r.conf.EnumType, field)
 
 	case protoreflect.BoolKind:
 		kindSchema = wk.NewBooleanSchema()
