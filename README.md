@@ -103,7 +103,6 @@ in a way that won't trip anyone up.
       - [Supported Validators](#supported-validators)
     - [Google Field Behavior Annotations](#google-field-behavior-annotations)
     - [OAS3 header support](#oas3-header-support)
-- [https://github.com/kollalabs/protoc-gen-openapi?tab=readme-ov-file](#httpsgithubcomkollalabsprotoc-gen-openapitabreadme-ov-file)
 
 ### Better Enum Support
 Enums work better by using string values of proto enums instead of ints.
@@ -211,10 +210,16 @@ String
 Int32
 - gte
 - lte
+- gt
+- lt
+- const
 
 Int64
 - gte
 - lte
+- gt
+- lt
+- const
 
 Adding more can easily be done in the function `addValidationRules` in `/generator/openapi-v3.yaml`
 
@@ -226,6 +231,3 @@ Adding more can easily be done in the function `addValidationRules` in `/generat
 * TODO: `(google.api.field_behavior) = IMMUTABLE` will add the `x-createOnly` property to the field (not supported by openapi yet)
 
 ### OAS3 header support
-
-
-# https://github.com/kollalabs/protoc-gen-openapi?tab=readme-ov-file
