@@ -17,6 +17,7 @@ package main
 
 import (
 	"flag"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -61,10 +62,26 @@ func main() {
 					return err
 				}
 			}
-		} else {
-			outputFile := plugin.NewGeneratedFile("openapi.yaml", "")
-			return generator.NewOpenAPIv3Generator(plugin, conf, plugin.Files).Run(outputFile)
+			return nil
 		}
-		return nil
+		if *conf.OutputMode == "package" {
+			packages := map[string][]*protogen.File{}
+			for _, file := range plugin.Files {
+				if !file.Generate {
+					continue
+				}
+				pkg := string(file.Desc.Package())
+				packages[pkg] = append(packages[pkg], file)
+			}
+			for _, files := range packages {
+				outfileName := path.Join(path.Dir(files[0].Desc.Path()), "openapi.yaml")
+				outputFile := plugin.NewGeneratedFile(outfileName, "")
+				return generator.NewOpenAPIv3Generator(plugin, conf, files).Run(outputFile)
+			}
+			return nil
+		}
+
+		outputFile := plugin.NewGeneratedFile("openapi.yaml", "")
+		return generator.NewOpenAPIv3Generator(plugin, conf, plugin.Files).Run(outputFile)
 	})
 }

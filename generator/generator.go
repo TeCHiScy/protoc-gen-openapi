@@ -90,6 +90,10 @@ func NewOpenAPIv3Generator(plugin *protogen.Plugin, conf Configuration, inputFil
 // Run runs the generator.
 func (g *OpenAPIv3Generator) Run(outputFile *protogen.GeneratedFile) error {
 	d := g.buildDocumentV3()
+	if len(d.Paths.Path) == 0 { // no paths, skip
+		outputFile.Skip()
+		return nil
+	}
 	bytes, err := d.YAMLValue("Generated with protoc-gen-openapi\n" + infoURL)
 	if err != nil {
 		return fmt.Errorf("failed to marshal yaml: %s", err.Error())
@@ -122,15 +126,15 @@ func (g *OpenAPIv3Generator) buildDocumentV3() *v3.Document {
 	// track of which schemas are referenced in the response so we can
 	// add them later.
 	for _, file := range g.inputFiles {
-		if file.Generate {
-			// Merge any `Document` annotations with the current
-			extDocument := proto.GetExtension(file.Desc.Options(), v3.E_Document)
-			if extDocument != nil {
-				proto.Merge(d, extDocument.(*v3.Document))
-			}
-
-			g.addPathsToDocumentV3(d, file.Services)
+		if !file.Generate {
+			continue
 		}
+		// Merge any `Document` annotations with the current
+		extDocument := proto.GetExtension(file.Desc.Options(), v3.E_Document)
+		if extDocument != nil {
+			proto.Merge(d, extDocument.(*v3.Document))
+		}
+		g.addPathsToDocumentV3(d, file.Services)
 	}
 
 	// While we have required schemas left to generate, go through the files again
